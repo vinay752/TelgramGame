@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini RPG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #111;
+            font-family: 'Press Start 2P', cursive;
+            color: #fff;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            width: 95%;
+            max-width: 800px;
+            border: 4px solid #3b82f6;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #1f2937;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        #game-title {
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #6366f1;
+            font-size: 1.5rem;
+        }
+
+        #game-world {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(20, 1fr); /* Example grid */
+            grid-template-rows: repeat(15, 1fr);
+            background-color: #242424;
+            border: 2px solid #4b5563;
+            margin-bottom: 1rem;
+            overflow: auto;
+            position: relative; /* Important for absolute positioning of entities */
+        }
+
+        .tile {
+            width: 100%;
+            height: 100%;
+            /* Default tile style */
+            background-color: #374151;
+            border: 1px solid #4a5568;
+        }
+
+        .player {
+            /*background-color: #facc15; !* Yellow *!*/
+             background-image: url('player.png'); /* Replace with actual image path */
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            border: 2px solid #d97706;
+        }
+
+        .enemy {
+            /*background-color: #ef4444; !* Red *!*/
+            background-image: url('enemy.png'); /* Replace with actual image path */
+            background-size: cover;
+            background-repeat: no-repeat;
+             background-position: center;
+            border: 2px solid #b91c1c;
+        }
+
+        .obstacle {
+            background-color: #4b5563; /* Gray */
+            border: 2px solid #6b7280;
+        }
+
+        #dialogue-box {
+            background-color: #374151;
+            border: 2px solid #6b7280;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            color: #fff;
+            font-size: 0.8rem;
+            text-align: center;
+            min-height: 2rem;
+        }
+
+        #stats-box {
+            background-color: #374151;
+            border: 2px solid #6b7280;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            color: #fff;
+            font-size: 0.7rem;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        #controls-box {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+        #controls-box button {
+             padding: 0.5rem 1rem;
+            background-color: #4caf50;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            border-radius: 0.375rem; /* Rounded corners using Tailwind's scale */
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 0.75rem;
+            border: none;
+        }
+
+        #controls-box button:hover {
+            background-color: #45a049;
+        }
+
+        #game-over-modal {
+            position: fixed; /* Overlay the entire screen */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8); /* Dark semi-transparent overlay */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            visibility: hidden; /* Initially hidden */
+            z-index: 10; /* Ensure it's on top of everything */
+        }
+
+        #game-over-content {
+            background-color: #374151; /* Darker background for the modal content */
+            padding: 2rem;
+            border-radius: 0.375rem; /* Rounded corners */
+            text-align: center;
+            border: 4px solid #6b7280;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7); /* Stronger shadow */
+        }
+
+        #game-over-title {
+            font-size: 1.25rem; /* Larger title */
+            color: #f87171; /* Red color for game over */
+            margin-bottom: 1rem;
+        }
+
+        #game-over-text {
+            font-size: 0.875rem; /* Slightly larger text */
+            color: #fff;
+            margin-bottom: 1.5rem; /* Increased margin */
+        }
+
+        #restart-button {
+            padding: 0.75rem 1.5rem; /* Larger button */
+            background-color: #6366f1; /* Tailwind's indigo-500 */
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 1rem; /* Larger font size */
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Add shadow for depth */
+        }
+
+        #restart-button:hover {
+            background-color: #4338ca; /* Tailwind's indigo-700 on hover */
+        }
+
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1 id="game-title">Mini RPG</h1>
+        <div id="game-world"></div>
+        <div id="dialogue-box">Welcome to the world!</div>
+        <div id="stats-box">
+            <div id="player-stats">
+                <p>Player:</p>
+                <p>HP: <span id="player-hp">100</span></p>
+                <p>Attack: <span id="player-attack">10</span></p>
+            </div>
+            <div id="enemy-stats">
+                <p>Enemy:</p>
+                <p>HP: <span id="enemy-hp">50</span></p>
+                <p>Attack: <span id="enemy-attack">5</span></p>
+            </div>
+        </div>
+        <div id="controls-box">
+            <button id="attack-button">Attack</button>
+            <button id="move-up">Up</button>
+            <button id="move-down">Down</button>
+            <button id="move-left">Left</button>
+            <button id="move-right">Right</button>
+        </div>
+         <div id="game-over-modal">
+            <div id="game-over-content">
+                <h2 id="game-over-title">Game Over</h2>
+                <p id="game-over-text">You have been defeated!</p>
+                <button id="restart-button">Restart</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const gameWorld = document.getElementById('game-world');
+        const dialogueBox = document.getElementById('dialogue-box');
+        const playerHpDisplay = document.getElementById('player-hp');
+        const playerAttackDisplay = document.getElementById('player-attack');
+        const enemyHpDisplay = document.getElementById('enemy-hp');
+        const enemyAttackDisplay = document.getElementById('enemy-attack');
+        const attackButton = document.getElementById('attack-button');
+        const moveUpButton = document.getElementById('move-up');
+        const moveDownButton = document.getElementById('move-down');
+        const moveLeftButton = document.getElementById('move-left');
+        const moveRightButton = document.getElementById('move-right');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const gameOverText = document.getElementById('game-over-text');
+        const restartButton = document.getElementById('restart-button');
+
+
+        const gridSizeX = 20;
+        const gridSizeY = 15;
+
+        let playerPosition = { x: 1, y: 1 };
+        let enemyPosition = { x: 18, y: 10 };
+        let playerHp = 100;
+        let playerAttack = 10;
+        let enemyHp = 50;
+        let enemyAttack = 5;
+        let gameOver = false;
+
+
+        let worldMap = [];
+        for (let i = 0; i < gridSizeY; i++) {
+            worldMap[i] = [];
+            for (let j = 0; j < gridSizeX; j++) {
+                worldMap[i][j] = 0; // 0: empty, 1: player, 2: enemy, 3: obstacle
+            }
+        }
+
+        function generateWorld() {
+            gameWorld.innerHTML = ''; // Clear the world
+            for (let y = 0; y < gridSizeY; y++) {
+                for (let x = 0; x < gridSizeX; x++) {
+                    const tile = document.createElement('div');
+                    tile.classList.add('tile');
+                    // Add different tile styles based on worldMap values
+                    if(worldMap[y][x] === 3){ //obstacle
+                       tile.classList.add('obstacle')
+                    }
+                    gameWorld.appendChild(tile);
+                }
+            }
+             //add some obstacles
+             worldMap[3][3] = 3;
+             worldMap[3][4] = 3;
+             worldMap[3][5] = 3;
+             worldMap[10][14] = 3;
+             worldMap[10][15] = 3;
+             worldMap[10][16] = 3;
+        }
+
+
+        function updateWorld() {
+            generateWorld(); //regenerate world first to clear old positions.
+            const tiles = gameWorld.children;
+            //update player
+            const playerTileIndex = playerPosition.y * gridSizeX + playerPosition.x;
+            if (tiles[playerTileIndex]) {
+                tiles[playerTileIndex].classList.add('player');
+            }
+
+            //update enemy
+            const enemyTileIndex = enemyPosition.y * gridSizeX + enemyPosition.x;
+             if (tiles[enemyTileIndex]) {
+                tiles[enemyTileIndex].classList.add('enemy');
+            }
+            updateStatsDisplay();
+        }
+
+        function updateStatsDisplay() {
+            playerHpDisplay.textContent = playerHp;
+            playerAttackDisplay.textContent = playerAttack;
+            enemyHpDisplay.textContent = enemyHp;
+            enemyAttackDisplay.textContent = enemyAttack;
+        }
+
+        function movePlayer(dx, dy) {
+            if(gameOver){
+                return;
+            }
+            const newX = playerPosition.x + dx;
+            const newY = playerPosition.y + dy;
+
+            if (newX >= 0 && newX < gridSizeX && newY >= 0 && newY < gridSizeY && worldMap[newY][newX] !== 3) { //check for boundaries and obstacles.
+                playerPosition.x = newX;
+                playerPosition.y = newY;
+                updateWorld();
+                dialogueBox.textContent = "Player moved!";
+            } else {
+                dialogueBox.textContent = "Cannot move there!";
+            }
+        }
+
+        function attackEnemy() {
+            if(gameOver){
+                return;
+            }
+            dialogueBox.textContent = "Player attacks!";
+            enemyHp -= playerAttack;
+            if (enemyHp <= 0) {
+                dialogueBox.textContent = "You defeated the enemy!";
+                gameOver = true;
+                gameOverText.textContent = "Congratulations, You Won!";
+                gameOverModal.style.visibility = 'visible';
+            } else {
+                enemyAttackPlayer();
+            }
+            updateWorld();
+        }
+
+        function enemyAttackPlayer() {
+            dialogueBox.textContent = "Enemy attacks!";
+            playerHp -= enemyAttack;
+            if (playerHp <= 0) {
+                dialogueBox.textContent = "You have been defeated!";
+                gameOver = true;
+                gameOverText.textContent = "Oh no, You Lost!";
+                gameOverModal.style.visibility = 'visible';
+            }
+            updateWorld();
+        }
+
+
+
+        // Event Listeners for movement
+        moveUpButton.addEventListener('click', () => movePlayer(0, -1));
+        moveDownButton.addEventListener('click', () => movePlayer(0, 1));
+        moveLeftButton.addEventListener('click', () => movePlayer(-1, 0));
+        moveRightButton.addEventListener('click', () => movePlayer(1, 0));
+        attackButton.addEventListener('click', attackEnemy);
+        restartButton.addEventListener('click', () => {
+            // Reset game state
+            playerPosition = { x: 1, y: 1 };
+            enemyPosition = { x: 18, y: 10 };
+            playerHp = 100;
+            enemyHp = 50;
+            gameOver = false;
+            gameOverModal.style.visibility = 'hidden'; // Hide the modal
+            dialogueBox.textContent = "Game restarted!";
+            generateWorld();
+            updateWorld();
+
+        });
+
+        // Initialize the game
+        generateWorld();
+        updateWorld();
+    </script>
+</body>
+</html>
